@@ -117,22 +117,6 @@ async function handleStorageUpload(ctx, req, res, storageId) {
   }));
 }
 
-let fallbackPdfPromise;
-
-async function loadFallbackPdf() {
-  if (!fallbackPdfPromise) {
-    fallbackPdfPromise = (async () => {
-      const fallbackPath = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "exports", "convex-prod-full-export-2026-06-06", "_storage", "kg24perkqjpxpnnr57hvthned982ca2n.pdf");
-      try {
-        return await fs.readFile(fallbackPath);
-      } catch {
-        return null;
-      }
-    })();
-  }
-  return await fallbackPdfPromise;
-}
-
 async function handleStorageRoute(ctx, req, res, storageId) {
   if (req.method === "POST") {
     await handleStorageUpload(ctx, req, res, storageId);
@@ -140,37 +124,6 @@ async function handleStorageRoute(ctx, req, res, storageId) {
   }
 
   if (await tryServeCachedStorage(res, storageId)) {
-    return;
-  }
-
-  const exportDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "exports", "convex-prod-full-export-2026-06-06", "_storage");
-  const candidates = [".pdf", ".png", ".jpg", ".jpeg", ".webp", ""].map((suffix) => path.join(exportDir, `${storageId}${suffix}`));
-  for (const candidate of candidates) {
-    try {
-      const stat = await fs.stat(candidate);
-      if (stat.isFile()) {
-        const body = await fs.readFile(candidate);
-        res.writeHead(200, {
-          "content-type": storageMimeType(candidate),
-          "content-length": String(body.length),
-          "cache-control": "public, max-age=300",
-        });
-        res.end(body);
-        return;
-      }
-    } catch {
-      // keep probing
-    }
-  }
-
-  const placeholder = await loadFallbackPdf();
-  if (placeholder) {
-    res.writeHead(200, {
-      "content-type": "application/pdf",
-      "content-length": String(placeholder.length),
-      "cache-control": "no-store",
-    });
-    res.end(placeholder);
     return;
   }
 

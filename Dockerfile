@@ -6,7 +6,6 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY backend ./backend
-COPY exports ./exports
 
 ENV NODE_ENV=production
 ENV PORT=8081
