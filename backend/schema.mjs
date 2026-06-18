@@ -112,6 +112,16 @@ function buildIndexName(collectionName, keys, options = {}) {
   return [collectionName, keyPart, ...flags].join("__").replace(/[^a-zA-Z0-9_]+/g, "_");
 }
 
+function sameIndexKey(existingKey, desiredKey) {
+  const existingEntries = Object.entries(existingKey || {});
+  const desiredEntries = Object.entries(desiredKey || {});
+  if (existingEntries.length !== desiredEntries.length) return false;
+  return existingEntries.every(([field, direction], index) => {
+    const [desiredField, desiredDirection] = desiredEntries[index] || [];
+    return field === desiredField && direction === desiredDirection;
+  });
+}
+
 export async function ensureIndexes(db) {
   for (const collectionName of collectionNames) {
     await db.createCollection(collectionName).catch((error) => {
@@ -121,7 +131,21 @@ export async function ensureIndexes(db) {
 
   for (const [collectionName, specs] of Object.entries(indexSpecs)) {
     const collection = db.collection(collectionName);
+    const existingIndexes = await collection.indexes().catch(() => []);
     for (const [keys, options = {}] of specs) {
+      const existingIndex = existingIndexes.find((index) => sameIndexKey(index.key, keys));
+      if (existingIndex) {
+        const desiredName = options.name || buildIndexName(collectionName, keys, options);
+        if (existingIndex.name !== desiredName) {
+          console.log("Skipping index creation because an equivalent index already exists", {
+            collectionName,
+            desiredName,
+            existingName: existingIndex.name,
+          });
+        }
+        continue;
+      }
+
       const indexOptions = { ...options };
       if (!indexOptions.name) {
         indexOptions.name = buildIndexName(collectionName, keys, options);
