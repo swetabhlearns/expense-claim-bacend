@@ -101,6 +101,17 @@ export const indexSpecs = {
   ],
 };
 
+function buildIndexName(collectionName, keys, options = {}) {
+  const keyPart = Object.entries(keys)
+    .map(([field, direction]) => `${field}_${direction}`)
+    .join("_");
+  const flags = [];
+  if (options.unique) flags.push("unique");
+  if (options.sparse) flags.push("sparse");
+  if (options.partialFilterExpression) flags.push("partial");
+  return [collectionName, keyPart, ...flags].join("__").replace(/[^a-zA-Z0-9_]+/g, "_");
+}
+
 export async function ensureIndexes(db) {
   for (const collectionName of collectionNames) {
     await db.createCollection(collectionName).catch((error) => {
@@ -111,8 +122,11 @@ export async function ensureIndexes(db) {
   for (const [collectionName, specs] of Object.entries(indexSpecs)) {
     const collection = db.collection(collectionName);
     for (const [keys, options = {}] of specs) {
-      await collection.createIndex(keys, options);
+      const indexOptions = { ...options };
+      if (!indexOptions.name) {
+        indexOptions.name = buildIndexName(collectionName, keys, options);
+      }
+      await collection.createIndex(keys, indexOptions);
     }
   }
 }
-
