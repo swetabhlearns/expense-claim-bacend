@@ -20,8 +20,15 @@ npm run backend:dev
 
 ## Render
 
-Use the included `Dockerfile` as the render build. The service listens on `PORT=8081` by default and exposes `/api/health` for health checks.
+Use the included `render.yaml` or point Render at the `Dockerfile`. The service listens on `PORT=8081` by default and exposes `/api/health` for health checks.
 
-## Notes
+## Render env vars
 
-The backend includes the export snapshot under `exports/convex-prod-full-export-2026-06-06/` so file lookup fallback continues to work after deployment.
+- `MONGODB_URI`
+- `TEST_CONVEX_URL`
+- `FIREBASE_SERVICE_ACCOUNT_JSON` if you need Firebase token verification
+- `BACKEND_CORS_ORIGIN` set to your Vercel frontend URL
+- `APP_RELEASE_VERSION` optional, useful for release tracking
+
+`MONGODB_DB_NAME` defaults to `expenseclaim_test`.
+`FIREBASE_PROJECT_ID` defaults to `expense-bktcorp`.

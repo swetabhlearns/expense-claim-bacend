@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: expenseclaim-backend
+    env: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: "8081"
+      - key: BACKEND_PORT
+        value: "8081"
