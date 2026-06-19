@@ -278,7 +278,7 @@ async function handleDomainRoute(ctx, pathname, method, args) {
   }
 
   if (method === "GET" && pathname === "/api/version") {
-    const expectedVersion = url.searchParams.get("expected") || url.searchParams.get("expectedVersion") || null;
+    const expectedVersion = args.expected || args.expectedVersion || null;
     const version = ctx.config.releaseVersion;
     const buildId = ctx.config.buildId;
     return {
