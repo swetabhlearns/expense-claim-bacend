@@ -1,4 +1,4 @@
-import { forbidden, unauthorized } from "./errors.mjs";
+import { badRequest, forbidden, unauthorized } from "./errors.mjs";
 
 let adminAppPromise;
 
@@ -31,6 +31,16 @@ function normalizeEmail(value) {
   return value?.trim().toLowerCase() || null;
 }
 
+export async function findUserByEmailPreferActive(db, email) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return null;
+
+  const users = await db.collection("users").find({ email: normalizedEmail }).toArray();
+  if (users.length === 0) return null;
+
+  return users.find((user) => (user.status || "active") === "active") || users[0];
+}
+
 async function findUserByIdentity(db, identity, demoUserId) {
   if (demoUserId) {
     const demoUser = await db.collection("users").findOne({ _id: demoUserId });
@@ -39,7 +49,7 @@ async function findUserByIdentity(db, identity, demoUserId) {
 
   const email = normalizeEmail(identity?.email);
   if (!email) return null;
-  return await db.collection("users").findOne({ email });
+  return await findUserByEmailPreferActive(db, email);
 }
 
 export async function getRequestIdentity(req, config) {
@@ -74,7 +84,20 @@ export async function getRequestIdentity(req, config) {
 
 export async function getCurrentUser(ctx, args = {}) {
   const identity = await getRequestIdentity(ctx.req, ctx.config);
-  return await findUserByIdentity(ctx.db, identity, args.demoUserId);
+  const user = await findUserByIdentity(ctx.db, identity, args.demoUserId);
+  if (user) return user;
+
+  const demoUserId = args.demoUserId || ctx.req.headers["x-demo-user-id"] || ctx.req.headers["x-user-id"] || null;
+  if (demoUserId) {
+    throw badRequest("Unable to resolve demo user for getCurrentUser", {
+      demoUserId: String(demoUserId),
+      allowUnverifiedAuth: ctx.config.allowUnverifiedAuth,
+      authHeaderPresent: Boolean(ctx.req.headers.authorization),
+      identityEmail: identity?.email || null,
+    });
+  }
+
+  return null;
 }
 
 export async function requireCurrentUser(ctx, args = {}) {

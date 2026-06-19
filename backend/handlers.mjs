@@ -1,5 +1,5 @@
 import { ObjectId } from "mongodb";
-import { assertCanAccessClaim, assertRoleManager, assertVendorManager, canViewAdmin, canViewAnalytics, canViewFinance, canViewVendorLedger, getCurrentUser, requireCurrentUser } from "./auth.mjs";
+import { assertCanAccessClaim, assertRoleManager, assertVendorManager, canViewAdmin, canViewAnalytics, canViewFinance, canViewVendorLedger, findUserByEmailPreferActive, getCurrentUser, requireCurrentUser } from "./auth.mjs";
 import { callConvexStorageFunction, resolveConvexAttachmentUrl } from "./convexStorageBridge.mjs";
 import * as dashboardEngine from "./dashboardEngine.mjs";
 import { badRequest, forbidden, notFound } from "./errors.mjs";
@@ -1768,7 +1768,7 @@ async function assignRole(ctx, args) {
   const targetUserEmail = args.userEmail ? normalizeEmail(args.userEmail) : null;
   const user = targetUserId
     ? await ctx.db.collection("users").findOne({ _id: targetUserId })
-    : await ctx.db.collection("users").findOne({ email: targetUserEmail });
+    : await findUserByEmailPreferActive(ctx.db, targetUserEmail);
   if (!user) throw notFound("User not found");
   const nextRole = args.role || args.newRole || user.role;
   const nextNameInput = args.name ?? args.newName ?? user.name;
@@ -2196,7 +2196,7 @@ export const handlers = {
     return await listUsers(ctx, args);
   },
   "users.checkEmailRegistration": async (ctx, args) => {
-    const user = await ctx.db.collection("users").findOne({ email: normalizeEmail(args.email) });
+    const user = await findUserByEmailPreferActive(ctx.db, args.email);
     return { exists: Boolean(user), status: user ? user.status || "active" : null };
   },
   "users.searchEmployees": async (ctx, args) => {
@@ -2205,7 +2205,7 @@ export const handlers = {
     return users.filter((user) => user.role === "USER").slice(0, args.limit || 8).map((user) => ({ _id: user._id, name: user.name, email: user.email }));
   },
   "users.getUserById": async (ctx, args) => await ctx.db.collection("users").findOne({ _id: args.userId }),
-  "users.getUserByEmail": async (ctx, args) => await ctx.db.collection("users").findOne({ email: normalizeEmail(args.email) }),
+  "users.getUserByEmail": async (ctx, args) => await findUserByEmailPreferActive(ctx.db, args.email),
   "users.getRoleAuditLog": async (ctx, args) => {
     const user = await requireCurrentUser(ctx, args);
     assertRoleManager(user);
@@ -2218,7 +2218,7 @@ export const handlers = {
     assertRoleManager(user);
     const targetUser = args.userId
       ? await ctx.db.collection("users").findOne({ _id: args.userId })
-      : await ctx.db.collection("users").findOne({ email: normalizeEmail(args.userEmail) });
+      : await findUserByEmailPreferActive(ctx.db, args.userEmail);
     if (!targetUser) throw notFound("User not found");
     if (String(targetUser.email).toLowerCase() === user.email) {
       throw forbidden("Cannot delete your own account");
