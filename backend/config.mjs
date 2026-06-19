@@ -48,6 +48,12 @@ export function readConfig() {
   const testConvexUrl = process.env.TEST_CONVEX_URL || process.env.VITE_CONVEX_URL;
   const allowUnverifiedAuth = process.env.MONGO_BACKEND_ALLOW_UNVERIFIED_AUTH === "true";
   const releaseVersion = process.env.APP_RELEASE_VERSION || process.env.VERCEL_GIT_COMMIT_SHA || "mongo-test-local";
+  const buildId =
+    process.env.APP_BUILD_ID ||
+    process.env.RENDER_GIT_COMMIT ||
+    process.env.VERCEL_GIT_COMMIT_SHA ||
+    process.env.GITHUB_SHA ||
+    releaseVersion;
 
   if (!mongodbUri) {
     throw new Error("Missing MONGODB_URI. Set it before starting the Mongo backend.");
@@ -61,5 +67,6 @@ export function readConfig() {
     testConvexUrl,
     allowUnverifiedAuth,
     releaseVersion,
+    buildId,
   };
 }
