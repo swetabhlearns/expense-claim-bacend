@@ -1,3 +1,4 @@
+import { ObjectId } from "mongodb";
 import { badRequest, forbidden, unauthorized } from "./errors.mjs";
 
 let adminAppPromise;
@@ -45,6 +46,11 @@ async function findUserByIdentity(db, identity, demoUserId) {
   if (demoUserId) {
     const demoUser = await db.collection("users").findOne({ _id: demoUserId });
     if (demoUser) return demoUser;
+
+    if (typeof demoUserId === "string" && ObjectId.isValid(demoUserId)) {
+      const objectIdUser = await db.collection("users").findOne({ _id: new ObjectId(demoUserId) });
+      if (objectIdUser) return objectIdUser;
+    }
   }
 
   const email = normalizeEmail(identity?.email);
